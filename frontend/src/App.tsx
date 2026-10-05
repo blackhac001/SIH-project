@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './hooks/useAuth';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 import { MainLayout } from './layouts/MainLayout';
 import { RoleDashboardLayout } from './layouts/RoleDashboardLayout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
@@ -29,6 +29,18 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+
+const DashboardRedirect: React.FC = () => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  const role = user.role;
+  if (role === 'EMPLOYER') return <Navigate to="/company/dashboard" replace />;
+  if (role === 'TRAINING_PROVIDER') return <Navigate to="/provider/dashboard" replace />;
+  if (role === 'SUPER_ADMIN' || role === 'STATE_ADMIN' || role === 'DISTRICT_OFFICER') {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  return <Navigate to="/candidate/dashboard" replace />;
+};
 
 export const App: React.FC = () => {
   return (
@@ -163,7 +175,8 @@ export const App: React.FC = () => {
           </Route>
 
           {/* Generic /dashboard redirect */}
-          <Route path="/dashboard/*" element={<Navigate to="/candidate/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardRedirect />} />
+          <Route path="/dashboard/*" element={<DashboardRedirect />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/404" replace />} />

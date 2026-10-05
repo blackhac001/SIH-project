@@ -17,6 +17,11 @@ from app.schemas.employment import (
 )
 from app.schemas.follow_up import FollowUpBase, FollowUpCreate, FollowUpResponse
 from app.schemas.governance import ConsentBase, ConsentCreate, ConsentResponse, AuditLogBase, AuditLogCreate, AuditLogResponse
+from app.schemas.resume import ResumeBase, ResumeResponse, ResumeUploadResponse, ResumeStatusResponse, ResumeExtractedTextResponse
+from app.schemas.resume_analysis import (
+    EducationItem, ExperienceItem, ProjectItem,
+    ResumeAnalyzeRequest, ResumeAnalysisDetailResponse, ResumeAnalysisStatusResponse
+)
 
 __all__ = [
     "RoleBase", "RoleCreate", "RoleResponse",
@@ -34,5 +39,8 @@ __all__ = [
     "EmploymentRecordBase", "EmploymentRecordCreate", "EmploymentRecordResponse",
     "FollowUpBase", "FollowUpCreate", "FollowUpResponse",
     "ConsentBase", "ConsentCreate", "ConsentResponse",
-    "AuditLogBase", "AuditLogCreate", "AuditLogResponse"
+    "AuditLogBase", "AuditLogCreate", "AuditLogResponse",
+    "ResumeBase", "ResumeResponse", "ResumeUploadResponse", "ResumeStatusResponse", "ResumeExtractedTextResponse",
+    "EducationItem", "ExperienceItem", "ProjectItem",
+    "ResumeAnalyzeRequest", "ResumeAnalysisDetailResponse", "ResumeAnalysisStatusResponse"
 ]

@@ -94,13 +94,28 @@ def get_current_candidate(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    from app.models.candidate import Candidate
+    from app.models.candidate import Candidate, GenderEnum, CandidateEmploymentStatus
     candidate = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
     if not candidate:
         # If candidate record not linked yet, check by email
         candidate = db.query(Candidate).filter(Candidate.email == current_user.email).first()
         if candidate and not candidate.user_id:
             candidate.user_id = current_user.id
+            db.commit()
+            db.refresh(candidate)
+        elif not candidate and current_user.role and current_user.role.name.value in ["CANDIDATE"]:
+            import uuid
+            candidate = Candidate(
+                candidate_id=f"MSI-CAND-{uuid.uuid4().hex[:8].upper()}",
+                user_id=current_user.id,
+                full_name=current_user.full_name or "Candidate",
+                email=current_user.email,
+                gender=GenderEnum.OTHER,
+                district_id=1,
+                employment_status=CandidateEmploymentStatus.UNEMPLOYED,
+                is_active=True
+            )
+            db.add(candidate)
             db.commit()
             db.refresh(candidate)
     
@@ -116,12 +131,33 @@ def get_current_employer(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    from app.models.employment import Employer
+    from app.models.employment import Employer, CompanyType
     employer = db.query(Employer).filter(Employer.user_id == current_user.id).first()
     if not employer:
         employer = db.query(Employer).filter(Employer.hr_email == current_user.email).first()
-        if employer and not employer.user_id:
+        if employer:
             employer.user_id = current_user.id
+            db.commit()
+            db.refresh(employer)
+        elif current_user.role and current_user.role.name.value in ["EMPLOYER"]:
+            import uuid
+            from app.models.geography import District
+            dist = db.query(District).first()
+            employer = Employer(
+                user_id=current_user.id,
+                employer_code=f"EMP-AUTO-{uuid.uuid4().hex[:6].upper()}",
+                uuid=str(uuid.uuid4()),
+                company_name=current_user.organization_name or current_user.full_name or "Global Tech Partner",
+                industry_sector="Technology & Software",
+                company_type=CompanyType.CORPORATE,
+                district_id=dist.id if dist else 1,
+                address="Global Headquarters",
+                hr_name=current_user.full_name or "HR Team",
+                hr_email=current_user.email,
+                hr_phone=current_user.phone_number or "+1-555-0100",
+                is_active=True,
+            )
+            db.add(employer)
             db.commit()
             db.refresh(employer)
 
@@ -137,12 +173,33 @@ def get_current_provider(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    from app.models.training import TrainingProvider
+    from app.models.training import TrainingProvider, ProviderType
     provider = db.query(TrainingProvider).filter(TrainingProvider.user_id == current_user.id).first()
     if not provider:
         provider = db.query(TrainingProvider).filter(TrainingProvider.email == current_user.email).first()
-        if provider and not provider.user_id:
+        if provider:
             provider.user_id = current_user.id
+            db.commit()
+            db.refresh(provider)
+        elif current_user.role and current_user.role.name.value in ["TRAINING_PROVIDER"]:
+            import uuid
+            from app.models.geography import District
+            dist = db.query(District).first()
+            provider = TrainingProvider(
+                user_id=current_user.id,
+                code=f"ACAD-AUTO-{uuid.uuid4().hex[:6].upper()}",
+                uuid=str(uuid.uuid4()),
+                name=current_user.organization_name or current_user.full_name or "Technical Training Academy",
+                provider_type=ProviderType.POLYTECHNIC,
+                district_id=dist.id if dist else 1,
+                address="Campus HQ",
+                contact_person=current_user.full_name or "Director",
+                phone=current_user.phone_number or "+1-555-0200",
+                email=current_user.email,
+                accreditation_status="ACCREDITED",
+                is_active=True,
+            )
+            db.add(provider)
             db.commit()
             db.refresh(provider)
 

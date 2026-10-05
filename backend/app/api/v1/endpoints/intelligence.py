@@ -1,5 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.user import User
@@ -48,6 +49,7 @@ def calculate_skill_gap(
 
 
 @router.post("/salary-prediction", response_model=SalaryProjectionResponse, summary="Calculate 5-Year Salary Forecast")
+@router.get("/salary-prediction", response_model=SalaryProjectionResponse, summary="Calculate 5-Year Salary Forecast (GET Alias)")
 def predict_salary(
     candidate: Candidate = Depends(get_current_candidate),
     db: Session = Depends(get_db),
@@ -63,24 +65,54 @@ def get_future_skills(db: Session = Depends(get_db)):
 
 
 @router.post("/copilot", response_model=CopilotChatResponse, summary="Chat with Career Copilot")
+@router.post("/chat", response_model=CopilotChatResponse, summary="Chat with Ask AI (Alias)")
 def chat_copilot(
     req: CopilotChatRequest,
-    candidate: Candidate = Depends(get_current_candidate),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """Context-aware AI career assistant personalized to the authenticated candidate's capability profile."""
     return IntelligenceService.chat_copilot(
         db,
-        candidate=candidate,
+        user=current_user,
         message=req.message,
-        history=req.conversation_history
+        conversation_history=req.conversation_history
     )
 
 
+@router.post("/copilot/stream", summary="Stream Chat with Ask AI via SSE")
+@router.post("/chat/stream", summary="Stream Chat with Ask AI (Alias)")
+def stream_copilot(
+    req: CopilotChatRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Real-time SSE streaming for Ask AI intelligence engine with authorized user context."""
+    stream_gen = IntelligenceService.chat_copilot_stream(
+        db,
+        user=current_user,
+        message=req.message,
+        conversation_history=req.conversation_history
+    )
+    return StreamingResponse(
+        stream_gen,
+        media_type="text/event-stream",
+        headers={
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+
 @router.get("/dashboard-kpis", response_model=DashboardKPIsResponse, summary="Get Real Database-Derived KPIs")
+@router.get("/stats", response_model=DashboardKPIsResponse, summary="Get Dashboard Statistics (Alias)")
 def get_dashboard_kpis(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """Retrieve real-time dashboard KPIs and activity feeds computed from database records."""
     return IntelligenceService.get_dashboard_kpis(db, current_user)
+

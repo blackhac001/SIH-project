@@ -26,6 +26,7 @@ from app.models.governance import (
 )
 from app.models.messaging import Conversation, ConversationParticipant, Message
 from app.models.resume_analysis import ResumeAnalysis
+from app.models.resume import Resume
 
 __all__ = [
     "TimestampMixin", "UUIDMixin",
@@ -41,5 +42,5 @@ __all__ = [
     "Apprenticeship", "SelfEmployment", "ApprenticeshipStatus", "BusinessType",
     "FollowUp", "EmployerFeedback", "CandidateFeedback", "FollowUpType", "RetentionStatus",
     "Consent", "AuditLog", "Notification", "JobDemand", "ConsentPurpose", "ConsentDataCategory", "GrowthTrend",
-    "Conversation", "ConversationParticipant", "Message", "ResumeAnalysis"
+    "Conversation", "ConversationParticipant", "Message", "ResumeAnalysis", "Resume"
 ]

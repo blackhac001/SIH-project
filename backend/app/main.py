@@ -103,18 +103,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS
-if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# Configure CORS (Supports localhost, 127.0.0.1, LAN IP, and all custom ports)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.BACKEND_CORS_ORIGINS or ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"^https?://.*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include API Router
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Also mount /api/chat/stream alias directly for flexible integration
+from app.api.v1.endpoints.intelligence import stream_copilot, chat_copilot
+app.add_api_route("/api/chat/stream", stream_copilot, methods=["POST"], tags=["Ask AI Streaming"])
+app.add_api_route("/api/chat", chat_copilot, methods=["POST"], tags=["Ask AI Streaming"])
 
 
 @app.get("/", tags=["Root"])

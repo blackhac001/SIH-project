@@ -14,14 +14,12 @@ export type UserRole = 'candidate' | 'company' | 'recruiter' | 'provider' | 'adm
 
 interface SidebarProps {
   currentRole: UserRole;
-  onChangeRole: (role: UserRole) => void;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentRole,
-  onChangeRole,
   isOpen,
   onClose,
 }) => {
@@ -45,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { label: 'AI Skill Gap', path: '/candidate/skill-gap', icon: Target },
         { label: 'Future Skills', path: '/candidate/future-skills', icon: Compass, badge: 'Hot' },
         { label: 'Career Roadmap', path: '/candidate/roadmap', icon: BookOpen },
-        { label: 'AI Copilot', path: '/candidate/copilot', icon: Bot, badge: 'Live' },
+        { label: 'Ask AI', path: '/candidate/copilot', icon: Bot, badge: 'Live' },
       ],
     },
     {
@@ -189,26 +187,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div className="h-20 flex items-center px-6 border-b border-slate-800/80 justify-between">
           <Logo size="sm" showTagline to={`/${currentRole}/dashboard`} />
-        </div>
-
-        {/* Perspective Quick Switcher (5 Roles) */}
-        <div className="p-3 mx-3 my-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
-          <div className="text-[10px] uppercase font-mono tracking-wider text-slate-500 mb-1.5 px-1 flex items-center justify-between">
-            <span>Current Role Workspace</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-          </div>
-
-          <select
-            value={currentRole}
-            onChange={(e) => onChangeRole(e.target.value as UserRole)}
-            className="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs font-semibold text-white focus:outline-none focus:border-cyan-500 cursor-pointer"
-          >
-            <option value="candidate">1. Candidate Workspace</option>
-            <option value="company">2. Company / Employer</option>
-            <option value="recruiter">3. Talent Recruiter</option>
-            <option value="provider">4. Training Provider</option>
-            <option value="admin">5. Ecosystem Admin</option>
-          </select>
         </div>
 
         {/* Scrollable Navigation */}

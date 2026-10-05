@@ -102,8 +102,9 @@ class FutureSkillItem(BaseModel):
 
 
 class CopilotChatRequest(BaseModel):
-    message: str
-    conversation_history: Optional[List[Dict[str, str]]] = []
+    message: str = Field(..., min_length=1)
+    conversation_history: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+
 
 
 class CopilotChatResponse(BaseModel):

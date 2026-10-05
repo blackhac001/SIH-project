@@ -72,10 +72,10 @@ export const LandingPage: React.FC = () => {
       route: '/candidate/future-skills',
     },
     {
-      title: 'Career Growth Copilot',
+      title: 'Ask AI Career Advisor',
       desc: '24/7 conversational AI assistant answering real-time questions regarding market value, interviews, and relocation.',
       icon: Bot,
-      badge: 'Live Copilot',
+      badge: 'Ask AI',
       glow: 'cyan' as const,
       route: '/candidate/copilot',
     },

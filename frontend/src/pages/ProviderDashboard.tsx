@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
@@ -7,20 +8,42 @@ import {
   Building2, Compass, CheckCircle2, AlertTriangle, Sparkles,
   ArrowRight, BarChart3, PieChart, Target
 } from 'lucide-react';
+import { fetchDashboardKPIsAPI } from '../services/intelligenceService';
 
 export const ProviderDashboard: React.FC = () => {
+  const { user } = useAuth();
+  const [kpis, setKpis] = useState<any>({
+    academyName: user?.organization_name || 'Training Academy',
+    accreditationStatus: 'ACCREDITED',
+    activeCourses: 0,
+    trainingCentres: 0,
+    activeCohorts: 0,
+    enrolledLearners: 0,
+    certificationsIssued: 0,
+    placedLearners: 0,
+    hasCourses: false,
+  });
+
+  useEffect(() => {
+    const loadKpis = async () => {
+      try {
+        const res = await fetchDashboardKPIsAPI();
+        if (res?.kpis) {
+          setKpis(res.kpis);
+        }
+      } catch {
+        // graceful
+      }
+    };
+    loadKpis();
+  }, []);
+
   const curriculumGaps = [
     { skill: 'Generative AI & LLMOps', industryDemand: 96, curriculumCoverage: 48, gap: -48, status: 'CRITICAL GAP', recommendation: 'Introduce Distributed PyTorch & vLLM Inference Lab' },
     { skill: 'Kubernetes & Service Mesh', industryDemand: 92, curriculumCoverage: 65, gap: -27, status: 'SIGNIFICANT GAP', recommendation: 'Add Istio & Helm Production Cluster Deployment' },
-    { skill: 'Cybersecurity Threat Hunting', industryDemand: 84, curriculumCoverage: 42, gap: -42, status: 'CRITICAL GAP', recommendation: 'Integrate Adversarial ML & Red Teaming Module' },
+    { skill: 'Cybersecurity & Cloud Enclaves', industryDemand: 84, curriculumCoverage: 42, gap: -42, status: 'CRITICAL GAP', recommendation: 'Integrate Zero-Trust Architecture & Hardware Enclaves' },
     { skill: 'Python REST Microservices', industryDemand: 88, curriculumCoverage: 94, gap: +6, status: 'ALIGNED', recommendation: 'Curriculum fully satisfies industry hiring standard' },
     { skill: 'PostgreSQL & Database Tuning', industryDemand: 82, curriculumCoverage: 88, gap: +6, status: 'ALIGNED', recommendation: 'Curriculum fully satisfies industry hiring standard' },
-  ];
-
-  const employerFeedbacks = [
-    { company: 'Google Cloud AI', score: 4.8, comment: 'Graduates demonstrate outstanding asynchronous Python fundamentals, but need more hands-on GPU cluster experience.' },
-    { company: 'Microsoft Azure', score: 4.6, comment: 'Strong API architecture discipline. Recommend integrating Terraform and Azure Kubernetes Service capstones.' },
-    { company: 'Siemens Industrial', score: 4.7, comment: 'Excellent problem solving skills. Verified certifications mapped accurately to our automation workflows.' },
   ];
 
   return (
@@ -33,10 +56,10 @@ export const ProviderDashboard: React.FC = () => {
             <span>Curriculum Intelligence & Outcomes Console</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            MIT Tech Academy — Training Intelligence Hub
+            {kpis.academyName || user?.organization_name || 'Training Academy Hub'}
           </h1>
           <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
-            "What skills should we teach?" Align your curriculum directly with real-time enterprise demand signals, track learner outcomes, and close market gaps.
+            Align your training curriculum directly with real-time enterprise demand signals, track learner outcomes, and close market gaps.
           </p>
         </div>
       </div>
@@ -45,26 +68,26 @@ export const ProviderDashboard: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card glow="purple" className="p-4">
           <div className="text-[10px] font-mono text-purple-400 uppercase">ENROLLED LEARNERS</div>
-          <div className="text-3xl font-black text-white mt-1 font-mono">1,480</div>
-          <div className="text-[10px] text-slate-400 mt-1">Across 12 cohorts</div>
+          <div className="text-3xl font-black text-white mt-1 font-mono">{kpis.enrolledLearners || 0}</div>
+          <div className="text-[10px] text-slate-400 mt-1">Across active cohorts</div>
         </Card>
 
         <Card glow="cyan" className="p-4">
-          <div className="text-[10px] font-mono text-cyan-400 uppercase">COMPLETION RATE</div>
-          <div className="text-3xl font-black text-cyan-300 mt-1 font-mono">88.4%</div>
-          <div className="text-[10px] text-cyan-400 mt-1">+4.2% vs last term</div>
+          <div className="text-[10px] font-mono text-cyan-400 uppercase">APPROVED COURSES</div>
+          <div className="text-3xl font-black text-cyan-300 mt-1 font-mono">{kpis.activeCourses || 0}</div>
+          <div className="text-[10px] text-cyan-400 mt-1">NSQF Aligned Modules</div>
         </Card>
 
         <Card glow="purple" className="p-4">
-          <div className="text-[10px] font-mono text-purple-400 uppercase">CERTIFICATIONS ISSUED</div>
-          <div className="text-3xl font-black text-purple-300 mt-1 font-mono">1,120</div>
-          <div className="text-[10px] text-slate-400 mt-1">Verified on-chain/ledger</div>
+          <div className="text-[10px] font-mono text-purple-400 uppercase">TRAINING CENTRES</div>
+          <div className="text-3xl font-black text-purple-300 mt-1 font-mono">{kpis.trainingCentres || 0}</div>
+          <div className="text-[10px] text-slate-400 mt-1">Accredited Locations</div>
         </Card>
 
         <Card glow="emerald" className="p-4">
-          <div className="text-[10px] font-mono text-emerald-400 uppercase">VERIFIED PLACEMENT RATE</div>
-          <div className="text-3xl font-black text-emerald-400 mt-1 font-mono">84.6%</div>
-          <div className="text-[10px] text-emerald-300 mt-1">Hired within 90 days</div>
+          <div className="text-[10px] font-mono text-emerald-400 uppercase">ACTIVE BATCHES</div>
+          <div className="text-3xl font-black text-emerald-400 mt-1 font-mono">{kpis.activeCohorts || 0}</div>
+          <div className="text-[10px] text-emerald-300 mt-1">Cohorts in progress</div>
         </Card>
       </div>
 
@@ -124,55 +147,6 @@ export const ProviderDashboard: React.FC = () => {
           </div>
         </div>
       </Card>
-
-      {/* Two-Column Section: Employer Feedback & Course Performance */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Employer Feedback on Graduates */}
-        <Card
-          glow="cyan"
-          title="Industry Employer Feedback"
-          subtitle="Direct ratings and review telemetry from hiring enterprise partners"
-          icon={<Building2 className="w-4 h-4 text-cyan-400" />}
-        >
-          <div className="space-y-3">
-            {employerFeedbacks.map((fb, i) => (
-              <div key={i} className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-white">{fb.company}</span>
-                  <span className="font-mono text-amber-400 font-semibold">★ {fb.score} / 5.0</span>
-                </div>
-                <p className="text-xs text-slate-300 leading-relaxed">"{fb.comment}"</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Recommended New Modules to Maximize Employability */}
-        <Card
-          glow="emerald"
-          title="Recommended High-Impact Modules"
-          subtitle="Courses projected to yield the highest graduate placement rates"
-          icon={<Compass className="w-4 h-4 text-emerald-400" />}
-        >
-          <div className="space-y-3">
-            {[
-              { title: 'Distributed LLMOps & GPU Cluster Scaling', boost: '+42% Placement Velocity', weeks: '8 Weeks' },
-              { title: 'Production Istio & Kubernetes Mesh Engineering', boost: '+35% Salary Lift', weeks: '6 Weeks' },
-              { title: 'Zero-Trust Cloud Security with eBPF', boost: '+38% Employer Inquiries', weeks: '8 Weeks' },
-            ].map((course, idx) => (
-              <div key={idx} className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs font-bold text-white">{course.title}</div>
-                  <div className="text-[11px] text-emerald-400 font-mono mt-0.5">{course.boost}</div>
-                </div>
-                <Button variant="outline" size="sm" className="text-xs shrink-0">
-                  Add to Catalog
-                </Button>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
     </div>
   );
 };

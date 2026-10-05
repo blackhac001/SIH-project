@@ -36,7 +36,7 @@ export const Footer: React.FC = () => {
               <li><a href="/#earnings" className="hover:text-cyan-400 transition-colors">5-Year Salary Predictor</a></li>
               <li><a href="/#skills" className="hover:text-cyan-400 transition-colors">Future Skill Forecasts</a></li>
               <li><a href="/#gap" className="hover:text-cyan-400 transition-colors">Skill Gap Benchmark</a></li>
-              <li><a href="/#copilot" className="hover:text-cyan-400 transition-colors">Career Copilot AI</a></li>
+              <li><a href="/#copilot" className="hover:text-cyan-400 transition-colors">Ask AI Career Advisor</a></li>
             </ul>
           </div>
 

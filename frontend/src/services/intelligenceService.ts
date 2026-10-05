@@ -1,4 +1,6 @@
 import { api } from './api';
+import { API_BASE_URL } from '../utils/constants';
+import { storage } from '../utils/storage';
 
 export interface ResumeParsedResult {
   candidateName: string;
@@ -134,7 +136,7 @@ export interface GlobalRegionDemand {
 // Real Backend API Integrations
 // -----------------------------------------------------------------------------
 
-export const analyzeResumeAPI = async (resumeText: string, targetRole?: string): Promise<ResumeParsedResult> => {
+export const analyzeResumeAPI = async (resumeText: string, targetRole?: string): Promise<ResumeParsedResult | null> => {
   try {
     const response = await api.post<ResumeParsedResult>('/intelligence/analyze-resume', {
       resume_text: resumeText,
@@ -142,27 +144,30 @@ export const analyzeResumeAPI = async (resumeText: string, targetRole?: string):
     });
     return response.data;
   } catch {
-    return getResumeAnalysisMock();
+    // Return null so callers can show an empty state instead of mock data
+    return null;
   }
 };
 
-export const predictSalaryAPI = async (): Promise<SalaryProjection> => {
+export const predictSalaryAPI = async (): Promise<SalaryProjection | null> => {
   try {
     const response = await api.post<SalaryProjection>('/intelligence/salary-prediction');
     return response.data;
   } catch {
-    return getSalaryProjectionData();
+    // Return null so the dashboard shows the empty state instead of mock salary data
+    return null;
   }
 };
 
-export const computeSkillGapAPI = async (targetRole?: string): Promise<SkillGapAnalysis> => {
+export const computeSkillGapAPI = async (targetRole?: string): Promise<SkillGapAnalysis | null> => {
   try {
     const response = await api.post<SkillGapAnalysis>('/intelligence/skill-gap', {
       target_role: targetRole || "Principal AI & Cloud Architect"
     });
     return response.data;
   } catch {
-    return getSkillGapData();
+    // Return null so the dashboard shows the empty state instead of mock skill gap data
+    return null;
   }
 };
 
@@ -171,22 +176,122 @@ export const fetchFutureSkillsAPI = async (): Promise<FutureSkill[]> => {
     const response = await api.get<FutureSkill[]>('/intelligence/future-skills');
     return response.data;
   } catch {
-    return getFutureSkillsData();
+    // Return empty array so the dashboard shows nothing instead of mock future skills
+    return [];
   }
 };
 
 export const chatCopilotAPI = async (message: string, history?: any[]) => {
+  const response = await api.post('/intelligence/copilot', {
+    message,
+    conversation_history: history || []
+  });
+  return response.data;
+};
+
+export interface StreamAskAIOptions {
+  message: string;
+  history?: any[];
+  onChunk: (chunk: string) => void;
+  onDone?: (fullText: string, suggestedActions: string[]) => void;
+  onError?: (error: any) => void;
+  signal?: AbortSignal;
+}
+
+export const streamAskAIAPI = async ({
+  message,
+  history = [],
+  onChunk,
+  onDone,
+  onError,
+  signal
+}: StreamAskAIOptions): Promise<{ reply: string; suggestedActions: string[] }> => {
+  const token = storage.getToken();
+  const url = `${API_BASE_URL}/intelligence/copilot/stream`;
+  let fullText = '';
+  let suggestedActions: string[] = [];
+
   try {
-    const response = await api.post('/intelligence/copilot', {
-      message,
-      conversation_history: history || []
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        message,
+        conversation_history: history
+      }),
+      signal
     });
-    return response.data;
-  } catch {
-    return {
-      reply: "I am your CONNECTX Career Copilot. How can I assist your skills roadmap and job discovery today?",
-      suggestedActions: ["Analyze my resume", "View salary forecast", "Find matching jobs"]
-    };
+
+    if (!response.ok) {
+      // Fallback to standard request
+      const fallback = await chatCopilotAPI(message, history);
+      onChunk(fallback.reply);
+      if (onDone) onDone(fallback.reply, fallback.suggestedActions || []);
+      return fallback;
+    }
+
+    if (!response.body) {
+      throw new Error('ReadableStream not supported');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data:')) continue;
+
+        const dataStr = trimmed.replace(/^data:\s*/, '');
+        if (dataStr === '[DONE]') {
+          continue;
+        }
+
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (parsed.chunk || parsed.text) {
+            const tokenText = parsed.chunk || parsed.text;
+            fullText += tokenText;
+            onChunk(tokenText);
+          }
+          if (parsed.done && parsed.suggestedActions) {
+            suggestedActions = parsed.suggestedActions;
+          }
+        } catch {
+          fullText += dataStr;
+          onChunk(dataStr);
+        }
+      }
+    }
+
+    if (onDone) {
+      onDone(fullText, suggestedActions);
+    }
+    return { reply: fullText, suggestedActions };
+  } catch (err: any) {
+    if (signal?.aborted) {
+      return { reply: fullText || '', suggestedActions };
+    }
+    if (onError) onError(err);
+    try {
+      const fallback = await chatCopilotAPI(message, history);
+      onChunk(fallback.reply);
+      if (onDone) onDone(fallback.reply, fallback.suggestedActions || []);
+      return fallback;
+    } catch {
+      throw err;
+    }
   }
 };
 
@@ -212,22 +317,24 @@ export const fetchJobsAPI = async (): Promise<GlobalJob[]> => {
         countryCode: "US",
         city: "Remote / Hybrid",
         workplaceType: "Remote" as const,
-        salaryMin: j.min_salary || 120000,
-        salaryMax: j.max_salary || 165000,
+        salaryMin: j.min_salary || 0,
+        salaryMax: j.max_salary || 0,
         currency: "USD",
-        experienceLevel: "Senior" as const,
-        visaSponsorship: true,
-        matchScore: 92,
-        requiredSkills: j.job_skills?.map((js: any) => js.skill?.name) || ["Python", "FastAPI", "Cloud"],
-        description: j.description || "Architect and deliver high-performance distributed systems.",
-        postedDate: "Today",
-        applicantsCount: 14,
+        experienceLevel: (j.experience_level as GlobalJob['experienceLevel']) || "Mid",
+        visaSponsorship: j.visa_sponsorship ?? false,
+        matchScore: j.match_score || 0,
+        requiredSkills: j.job_skills?.map((js: any) => js.skill?.name).filter(Boolean) || [],
+        description: j.description || "",
+        postedDate: j.created_at ? new Date(j.created_at).toLocaleDateString() : "Recently",
+        applicantsCount: j.applicants_count || 0,
         applied: false,
       }));
     }
-    return getJobsData();
+    // No jobs in DB yet — return empty array, not mock data
+    return [];
   } catch {
-    return getJobsData();
+    // Return empty array so the dashboard shows nothing instead of mock jobs
+    return [];
   }
 };
 

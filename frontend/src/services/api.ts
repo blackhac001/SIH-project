@@ -7,7 +7,8 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  // CV analysis may wait for the configured AI provider before returning.
+  timeout: 60000,
 });
 
 // Request interceptor to attach JWT token

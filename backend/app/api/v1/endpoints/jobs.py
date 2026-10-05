@@ -76,6 +76,65 @@ def create_job(
     return job
 
 
+# -----------------------------------------------------------------------------
+# Real Application Endpoints (Placed before /{job_id} to avoid route shadowing)
+# -----------------------------------------------------------------------------
+
+@router.get("/applications/my", summary="Get Current Candidate Applications")
+def get_my_applications(
+    candidate: Candidate = Depends(get_current_candidate),
+    db: Session = Depends(get_db),
+):
+    """Retrieve all submitted job applications for the logged-in candidate."""
+    applications = db.query(Application).options(
+        joinedload(Application.job).joinedload(Job.employer)
+    ).filter(Application.candidate_id == candidate.id).order_by(Application.applied_at.desc()).all()
+
+    result = []
+    for a in applications:
+        result.append({
+            "id": a.id,
+            "jobId": a.job_id,
+            "jobTitle": a.job.title if a.job else "Software Engineer",
+            "company": a.job.employer.company_name if (a.job and a.job.employer) else "Global Enterprise",
+            "location": a.job.district.name if (a.job and a.job.district) else "Remote",
+            "minSalary": a.job.min_salary if a.job else 120000,
+            "maxSalary": a.job.max_salary if a.job else 150000,
+            "status": a.status.value,
+            "appliedAt": a.applied_at.isoformat()
+        })
+    return result
+
+
+@router.get("/employer/applications", summary="Get All Applications for Current Employer")
+def get_employer_applications(
+    employer: Employer = Depends(get_current_employer),
+    db: Session = Depends(get_db),
+):
+    """Retrieve all applicants for jobs posted by the authenticated employer."""
+    job_ids = [j.id for j in employer.jobs]
+    applications = db.query(Application).options(
+        joinedload(Application.candidate),
+        joinedload(Application.job)
+    ).filter(Application.job_id.in_(job_ids)).order_by(Application.applied_at.desc()).all()
+
+    result = []
+    for a in applications:
+        cand = a.candidate
+        result.append({
+            "id": a.id,
+            "candidateId": cand.id if cand else 0,
+            "candidateName": cand.full_name if cand else "Candidate",
+            "candidateEmail": cand.email if cand else "",
+            "education": cand.education_level if cand else "Graduate",
+            "jobId": a.job_id,
+            "jobTitle": a.job.title if a.job else "",
+            "status": a.status.value,
+            "appliedAt": a.applied_at.isoformat()
+        })
+    return result
+
+
 @router.get("/{job_id}", response_model=JobResponse, summary="Get Job by ID")
 def get_job(
     job_id: int,
@@ -90,10 +149,6 @@ def get_job(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job {job_id} not found.")
     return job
 
-
-# -----------------------------------------------------------------------------
-# Real Application Endpoints
-# -----------------------------------------------------------------------------
 
 @router.post("/{job_id}/apply", summary="Apply to Job")
 def apply_to_job(
@@ -156,61 +211,6 @@ def apply_to_job(
         "appliedAt": app_record.applied_at.isoformat(),
         "message": "Application submitted successfully."
     }
-
-
-@router.get("/applications/my", summary="Get Current Candidate Applications")
-def get_my_applications(
-    candidate: Candidate = Depends(get_current_candidate),
-    db: Session = Depends(get_db),
-):
-    """Retrieve all submitted job applications for the logged-in candidate."""
-    applications = db.query(Application).options(
-        joinedload(Application.job).joinedload(Job.employer)
-    ).filter(Application.candidate_id == candidate.id).order_by(Application.applied_at.desc()).all()
-
-    result = []
-    for a in applications:
-        result.append({
-            "id": a.id,
-            "jobId": a.job_id,
-            "jobTitle": a.job.title if a.job else "Software Engineer",
-            "company": a.job.employer.company_name if (a.job and a.job.employer) else "Global Enterprise",
-            "location": a.job.district.name if (a.job and a.job.district) else "Remote",
-            "minSalary": a.job.min_salary if a.job else 120000,
-            "maxSalary": a.job.max_salary if a.job else 150000,
-            "status": a.status.value,
-            "appliedAt": a.applied_at.isoformat()
-        })
-    return result
-
-
-@router.get("/employer/applications", summary="Get All Applications for Current Employer")
-def get_employer_applications(
-    employer: Employer = Depends(get_current_employer),
-    db: Session = Depends(get_db),
-):
-    """Retrieve all applicants for jobs posted by the authenticated employer."""
-    job_ids = [j.id for j in employer.jobs]
-    applications = db.query(Application).options(
-        joinedload(Application.candidate),
-        joinedload(Application.job)
-    ).filter(Application.job_id.in_(job_ids)).order_by(Application.applied_at.desc()).all()
-
-    result = []
-    for a in applications:
-        cand = a.candidate
-        result.append({
-            "id": a.id,
-            "candidateId": cand.id if cand else 0,
-            "candidateName": cand.full_name if cand else "Candidate",
-            "candidateEmail": cand.email if cand else "",
-            "education": cand.education_level if cand else "Graduate",
-            "jobId": a.job_id,
-            "jobTitle": a.job.title if a.job else "",
-            "status": a.status.value,
-            "appliedAt": a.applied_at.isoformat()
-        })
-    return result
 
 
 @router.put("/applications/{application_id}/status", summary="Update Application Status")

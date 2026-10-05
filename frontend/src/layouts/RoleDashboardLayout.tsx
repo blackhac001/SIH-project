@@ -3,15 +3,19 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar, UserRole } from '../components/layout/Sidebar';
 import { TopNavbar } from '../components/layout/TopNavbar';
 import { UniversalSearchModal } from '../components/common/UniversalSearchModal';
+import { AskAIChatWindow } from '../components/common/AskAIChatWindow';
+import { useAuth } from '../hooks/useAuth';
 import { Bot } from 'lucide-react';
 
 export const RoleDashboardLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [askAIOpen, setAskAIOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Detect current role from URL path
+  // Determine current role from URL path
   const detectRoleFromPath = (): UserRole => {
     const path = location.pathname;
     if (path.startsWith('/candidate')) return 'candidate';
@@ -19,6 +23,10 @@ export const RoleDashboardLayout: React.FC = () => {
     if (path.startsWith('/recruiter')) return 'recruiter';
     if (path.startsWith('/provider')) return 'provider';
     if (path.startsWith('/admin')) return 'admin';
+
+    if (user?.role === 'EMPLOYER') return 'company';
+    if (user?.role === 'TRAINING_PROVIDER') return 'provider';
+    if (user?.role === 'SUPER_ADMIN' || user?.role === 'STATE_ADMIN') return 'admin';
     return 'candidate';
   };
 
@@ -26,7 +34,7 @@ export const RoleDashboardLayout: React.FC = () => {
 
   useEffect(() => {
     setCurrentRole(detectRoleFromPath());
-  }, [location.pathname]);
+  }, [location.pathname, user]);
 
   const handleRoleChange = (newRole: UserRole) => {
     setCurrentRole(newRole);
@@ -38,10 +46,12 @@ export const RoleDashboardLayout: React.FC = () => {
       {/* Universal Search Modal (Ctrl+K) */}
       <UniversalSearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
+      {/* Fixed, Non-Movable Ask AI Chat Window with Internal Scrolling */}
+      <AskAIChatWindow isOpen={askAIOpen} onClose={() => setAskAIOpen(false)} />
+
       {/* Role-Specific Sidebar */}
       <Sidebar
         currentRole={currentRole}
-        onChangeRole={handleRoleChange}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -58,18 +68,18 @@ export const RoleDashboardLayout: React.FC = () => {
 
         {/* Page Content Viewport */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-150">
-          <Outlet context={{ currentRole, setCurrentRole: handleRoleChange }} />
+          <Outlet context={{ currentRole, setCurrentRole: handleRoleChange, onOpenAskAI: () => setAskAIOpen(true) }} />
         </main>
       </div>
 
-      {/* Floating AI Copilot Trigger (Available across workspaces) */}
+      {/* Fixed "Ask AI" Trigger Button (Available across all role dashboards) */}
       <button
-        onClick={() => navigate('/candidate/copilot')}
+        onClick={() => setAskAIOpen(true)}
         className="fixed bottom-6 right-6 z-30 p-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 text-white shadow-xl shadow-cyan-500/25 border border-cyan-400/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 group"
       >
         <Bot className="w-5 h-5 group-hover:rotate-12 transition-transform" />
         <span className="hidden md:inline text-xs font-bold tracking-wide font-mono">
-          AI Copilot
+          Ask AI
         </span>
         <span className="w-2 h-2 rounded-full bg-cyan-300 animate-ping"></span>
       </button>

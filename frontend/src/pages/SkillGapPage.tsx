@@ -1,37 +1,45 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import {
   Sparkles, Target, Flame, AlertCircle, CheckCircle2,
-  BookOpen, Award, ArrowRight, Compass, ShieldCheck
+  BookOpen, Award, ArrowRight, Compass, ShieldCheck, Zap
 } from 'lucide-react';
-import { computeSkillGapAPI, getSkillGapData, SkillGapAnalysis } from '../services/intelligenceService';
+import { computeSkillGapAPI, SkillGapAnalysis } from '../services/intelligenceService';
 
 export const SkillGapPage: React.FC = () => {
+  const navigate = useNavigate();
   const targetRoles = [
-    "Staff AI & Cloud Architect",
-    "Senior Autonomous Robotics Lead",
+    "Principal AI & Cloud Architect",
+    "Staff Autonomous Robotics Lead",
     "Cloud Native DevOps Principal",
     "Enterprise Cybersecurity Threat Specialist"
   ];
 
   const [selectedRole, setSelectedRole] = useState(targetRoles[0]);
-  const [data, setData] = useState<SkillGapAnalysis>(getSkillGapData());
+  const [data, setData] = useState<SkillGapAnalysis | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const handleRoleChange = async (role: string) => {
     setSelectedRole(role);
     try {
+      setLoading(true);
       const res = await computeSkillGapAPI(role);
       setData(res);
     } catch {
-      setData(getSkillGapData());
+      setData(null);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     handleRoleChange(selectedRole);
   }, []);
+
+  const hasData = Boolean(data && data.candidateSkillsCoverage > 0);
 
   return (
     <div className="space-y-8 pb-12">
@@ -68,157 +76,202 @@ export const SkillGapPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Visual Skill Gap Meter Card */}
-      <Card glow="purple" className="p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-4 text-center lg:text-left space-y-2">
-            <div className="text-xs font-mono text-purple-400 uppercase tracking-wider">Overall Match Index</div>
-            <div className="text-4xl font-black text-white font-mono">
-              {data.candidateSkillsCoverage}%
-              <span className="text-lg text-slate-500 font-normal"> / 100%</span>
-            </div>
-            <div className="text-xs text-rose-400 font-semibold flex items-center justify-center lg:justify-start gap-1">
-              <span>Skill Gap:</span>
-              <span className="font-mono">{100 - data.candidateSkillsCoverage}% Remaining</span>
-            </div>
-            <p className="text-xs text-slate-400 pt-1">
-              Estimated 12 weeks to achieve 100% benchmark qualification.
-            </p>
-          </div>
-
-          <div className="lg:col-span-8 space-y-4">
-            {/* Visual Bar Comparison */}
-            <div>
-              <div className="flex items-center justify-between text-xs font-semibold mb-1">
-                <span className="text-cyan-400 font-mono">Your Verified Skills (78%)</span>
-                <span className="text-purple-300 font-mono">Target Role Requirements (100%)</span>
+      {hasData && data ? (
+        <>
+          {/* Visual Skill Gap Meter Card */}
+          <Card glow="purple" className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="lg:col-span-4 text-center lg:text-left space-y-2">
+                <div className="text-xs font-mono text-purple-400 uppercase tracking-wider">Overall Match Index</div>
+                <div className="text-4xl font-black text-white font-mono">
+                  {data.matchScore}%
+                  <span className="text-lg text-slate-500 font-normal"> / 100%</span>
+                </div>
+                <div className="text-xs text-rose-400 font-semibold flex items-center justify-center lg:justify-start gap-1">
+                  <span>Skill Gap:</span>
+                  <span className="font-mono">{Math.max(100 - data.matchScore, 0)}% Remaining</span>
+                </div>
+                <p className="text-xs text-slate-400 pt-1">
+                  Target Curriculum: {data.targetRole}
+                </p>
               </div>
-              <div className="w-full bg-slate-800 h-4 rounded-full overflow-hidden p-0.5 border border-slate-700">
-                <div
-                  className="bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 h-full rounded-full transition-all duration-700"
-                  style={{ width: `${data.candidateSkillsCoverage}%` }}
-                ></div>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-3 gap-3 text-center text-xs">
-              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-                <div className="text-emerald-400 font-bold font-mono">8 Skills</div>
-                <div className="text-[10px] text-slate-400">Verified Matched</div>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-                <div className="text-rose-400 font-bold font-mono">2 Skills</div>
-                <div className="text-[10px] text-slate-400">Critical Missing</div>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-                <div className="text-cyan-400 font-bold font-mono">2 Skills</div>
-                <div className="text-[10px] text-slate-400">Important Gaps</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Categorized Gap Breakdown: Critical vs Important vs Nice to Have */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Critical Missing */}
-        <Card glow="purple" className="space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-400 font-mono">
-            <Flame className="w-4 h-4 text-rose-400" />
-            <span>Critical Missing (P1)</span>
-          </div>
-          <p className="text-xs text-slate-400">Mandatory criteria for interview shortlisting.</p>
-
-          <div className="space-y-2.5 pt-2">
-            {data.criticalMissing.map((item, i) => (
-              <div key={i} className="p-3.5 rounded-xl bg-rose-950/20 border border-rose-500/30 text-xs">
-                <div className="font-bold text-rose-200">{item.skill}</div>
-                <div className="text-[11px] text-slate-400 mt-1">{item.reason}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Important Missing */}
-        <Card glow="cyan" className="space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">
-            <AlertCircle className="w-4 h-4 text-cyan-400" />
-            <span>Important Gaps (P2)</span>
-          </div>
-          <p className="text-xs text-slate-400">Key differentiators during technical panel reviews.</p>
-
-          <div className="space-y-2.5 pt-2">
-            {data.importantMissing.map((item, i) => (
-              <div key={i} className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/30 text-xs">
-                <div className="font-bold text-cyan-200">{item.skill}</div>
-                <div className="text-[11px] text-slate-400 mt-1">{item.reason}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Nice to Have */}
-        <Card glow="blue" className="space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-400 font-mono">
-            <Sparkles className="w-4 h-4 text-blue-400" />
-            <span>Nice to Have (P3)</span>
-          </div>
-          <p className="text-xs text-slate-400">Emerging competencies that provide extra leverage.</p>
-
-          <div className="space-y-2.5 pt-2">
-            {data.niceToHave.map((item, i) => (
-              <div key={i} className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/30 text-xs">
-                <div className="font-bold text-blue-200">{item.skill}</div>
-                <div className="text-[11px] text-slate-400 mt-1">{item.reason}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Personalized 12-Week Learning Curriculum */}
-      <Card
-        glow="cyan"
-        title="Personalized 12-Week Bridge Curriculum"
-        subtitle="Step-by-step accelerated learning path designed by AI for target benchmark"
-        icon={<BookOpen className="w-4 h-4" />}
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {data.curatedLearningPath.map((step, idx) => (
-              <div
-                key={step.week}
-                className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between group hover:border-cyan-500/40 transition-all"
-              >
+              <div className="lg:col-span-8 space-y-4">
+                {/* Visual Bar Comparison */}
                 <div>
-                  <div className="flex items-center justify-between text-xs font-mono mb-2">
-                    <span className="text-cyan-400 font-semibold">{step.week}</span>
-                    <span className="text-slate-500">Step {idx + 1}</span>
+                  <div className="flex items-center justify-between text-xs font-semibold mb-1">
+                    <span className="text-cyan-400 font-mono">Your Verified Skills ({data.matchScore}%)</span>
+                    <span className="text-purple-300 font-mono">Target Role Requirements (100%)</span>
                   </div>
-
-                  <h4 className="text-sm font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors">
-                    {step.focus}
-                  </h4>
-
-                  <div className="space-y-1.5">
-                    {step.skills.map((sk) => (
-                      <div key={sk} className="text-xs text-slate-300 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                        <span>{sk}</span>
-                      </div>
-                    ))}
+                  <div className="w-full bg-slate-800 h-4 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                    <div
+                      className="bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.max(data.matchScore, 5)}%` }}
+                    ></div>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-purple-300 font-mono flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span className="truncate">{step.certification}</span>
+                <div className="grid grid-cols-3 gap-3 text-center text-xs">
+                  <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <div className="text-emerald-400 font-bold font-mono">{data.candidateSkillsCoverage} Skills</div>
+                    <div className="text-[10px] text-slate-400">Verified Matched</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <div className="text-rose-400 font-bold font-mono">{data.criticalMissing?.length || 0} Skills</div>
+                    <div className="text-[10px] text-slate-400">Critical Missing</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                    <div className="text-cyan-400 font-bold font-mono">{data.importantMissing?.length || 0} Skills</div>
+                    <div className="text-[10px] text-slate-400">Important Gaps</div>
+                  </div>
                 </div>
               </div>
-            ))}
+            </div>
+          </Card>
+
+          {/* Categorized Gap Breakdown: Critical vs Important vs Nice to Have */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Critical Missing */}
+            <Card glow="purple" className="space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-400 font-mono">
+                <Flame className="w-4 h-4 text-rose-400" />
+                <span>Critical Missing (P1)</span>
+              </div>
+              <p className="text-xs text-slate-400">Mandatory criteria for interview shortlisting.</p>
+
+              <div className="space-y-2.5 pt-2">
+                {data.criticalMissing && data.criticalMissing.length > 0 ? (
+                  data.criticalMissing.map((item, i) => (
+                    <div key={i} className="p-3.5 rounded-xl bg-rose-950/20 border border-rose-500/30 text-xs">
+                      <div className="font-bold text-rose-200">{item.skill}</div>
+                      <div className="text-[11px] text-slate-400 mt-1">{item.reason}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-emerald-400 flex items-center gap-1.5 p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/30">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>No critical missing skills for this role!</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Important Missing */}
+            <Card glow="cyan" className="space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">
+                <AlertCircle className="w-4 h-4 text-cyan-400" />
+                <span>Important Gaps (P2)</span>
+              </div>
+              <p className="text-xs text-slate-400">Key differentiators during technical panel reviews.</p>
+
+              <div className="space-y-2.5 pt-2">
+                {data.importantMissing && data.importantMissing.length > 0 ? (
+                  data.importantMissing.map((item, i) => (
+                    <div key={i} className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/30 text-xs">
+                      <div className="font-bold text-cyan-200">{item.skill}</div>
+                      <div className="text-[11px] text-slate-400 mt-1">{item.reason}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-emerald-400 flex items-center gap-1.5 p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/30">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>All important qualifications satisfied!</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Nice to Have */}
+            <Card glow="blue" className="space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-400 font-mono">
+                <Sparkles className="w-4 h-4 text-blue-400" />
+                <span>Nice to Have (P3)</span>
+              </div>
+              <p className="text-xs text-slate-400">Emerging competencies that provide extra leverage.</p>
+
+              <div className="space-y-2.5 pt-2">
+                {data.niceToHave && data.niceToHave.length > 0 ? (
+                  data.niceToHave.map((item, i) => (
+                    <div key={i} className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/30 text-xs">
+                      <div className="font-bold text-blue-200">{item.skill}</div>
+                      <div className="text-[11px] text-slate-400 mt-1">{item.reason}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-slate-400 p-3 rounded-xl bg-slate-900 border border-slate-800">
+                    No optional gap items identified.
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
-        </div>
-      </Card>
+
+          {/* Personalized 12-Week Learning Curriculum */}
+          {data.curatedLearningPath && data.curatedLearningPath.length > 0 && (
+            <Card
+              glow="cyan"
+              title="Personalized 12-Week Bridge Curriculum"
+              subtitle="Step-by-step accelerated learning path designed by AI for target benchmark"
+              icon={<BookOpen className="w-4 h-4" />}
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {data.curatedLearningPath.map((step, idx) => (
+                    <div
+                      key={step.week}
+                      className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between group hover:border-cyan-500/40 transition-all"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between text-xs font-mono mb-2">
+                          <span className="text-cyan-400 font-semibold">{step.week}</span>
+                          <span className="text-slate-500">Step {idx + 1}</span>
+                        </div>
+
+                        <h4 className="text-sm font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors">
+                          {step.focus}
+                        </h4>
+
+                        <div className="space-y-1.5">
+                          {step.skills.map((sk) => (
+                            <div key={sk} className="text-xs text-slate-300 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                              <span>{sk}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-purple-300 font-mono flex items-center gap-1.5">
+                        <Award className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                        <span className="truncate">{step.certification}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
+        </>
+      ) : (
+        /* Empty State */
+        <Card glow="purple" className="p-8 sm:p-12 text-center space-y-4">
+          <Target className="w-12 h-12 text-purple-400/60 mx-auto" />
+          <h3 className="text-lg font-bold text-white">Skill Benchmark Unavailable</h3>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+            Upload your CV or analyze your resume to benchmark your verified competencies against enterprise role requirements and generate a personalized 12-week learning path.
+          </p>
+          <div className="pt-2">
+            <Button
+              variant="cyber"
+              size="md"
+              onClick={() => navigate('/candidate/resume')}
+              leftIcon={<Zap className="w-4 h-4" />}
+            >
+              Upload & Analyze CV
+            </Button>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
